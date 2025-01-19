@@ -1,0 +1,29 @@
+/* Untuk menata foto agar berada di tengah */
+.data-grid-img {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.data-grid-img img {
+  width: 90px;
+  height: 70px;
+  object-fit: cover;
+  margin: 0 auto;
+}
+
+/* Untuk menata ikon edit agar lebih besar dan berada di tengah secara horizontal dan vertikal */
+.data-grid-action {
+  display: flex;
+  justify-content: center;  /* Menjaga posisi ikon tetap di tengah horizontal */
+  align-items: center;      /* Menjaga posisi ikon tetap di tengah vertikal */
+  height: 100%;             /* Memastikan elemen memiliki tinggi penuh */
+  font-size: 24px;          /* Ukuran lebih besar */
+  cursor: pointer;
+}
+
+/* CSS untuk memastikan tanggal tampil di tengah */
+.data-grid-date {
+  text-align: center !important;
+}

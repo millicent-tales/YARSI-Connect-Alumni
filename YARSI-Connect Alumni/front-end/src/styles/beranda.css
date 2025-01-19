@@ -1,0 +1,120 @@
+.navbar-style {
+    background-color: #38524C;
+    color: white !important;
+    justify-content: center;
+}
+
+.navbar-style .dropdown-toggle {
+    color: white !important;
+    margin-right: 20px;
+}
+
+.navbar-style .nav-link {
+    margin-right: 20px;
+}
+
+  
+
+.navbar-style .nav-link:hover,
+.navbar-style .nav-link.active {
+    color: #CBDCED !important;
+    text-decoration: underline;
+}
+
+.beranda-container{
+    margin-bottom: 80px;
+    margin-top: 150px; 
+}
+
+.beranda-title {
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.beranda-images {
+    margin: 10px;
+    width: 100%;
+    height: auto;
+}
+
+.beranda-news {
+    background: #ecf0f1;
+    margin-top: 30px;
+    padding-bottom: 100px;
+}
+
+.display-component {
+    background: #CBDCED;
+    margin-top: 30px;
+    padding: 50px;
+}
+
+.text-style {
+    text-align: justify;
+}
+
+.footer-style {
+    padding: 30px;
+    background-color: #38524C;
+    color: white;
+    text-align: justify;
+}
+
+.button-card {
+    background-color: #323D42;
+    margin-top: auto;
+}
+
+.card-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.carousel-image-container {
+    width: 100%;
+}
+
+.carousel-image-container img {
+    width: 100%;
+    height: 450px;
+    object-fit: cover;
+}
+
+.slide-style{
+    margin-top: 100px;
+}
+
+.image-acara{
+    height: 250px;
+    object-fit: cover; 
+}
+
+.custom-hr{
+    border-top: 5px solid #38524C !important;
+}
+
+.custom-overlay {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.title-bg {
+    background-color: rgba(0, 0, 0, 0.7); /* Warna background untuk judul */
+    padding: 10px;
+    width: 100%;
+    text-align: center;
+}
+
+.card-image{
+    height: 200px;
+    object-fit: cover; 
+}
+
+.kategori-program{
+    margin-top: 100px;
+}
+

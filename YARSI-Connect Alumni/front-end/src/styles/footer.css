@@ -1,0 +1,39 @@
+/* Reset margin and padding for all elements */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  /* Make the entire page container occupy full height of viewport */
+  html,
+  body {
+    height: 100%;
+  }
+  
+  /* Main container of the app */
+  #root,
+  main {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+  
+  /* Ensure the footer is sticky and always at the bottom */
+  .main-footer {
+    margin-top: auto;
+    background-color: #f8f9fa; /* Example background color */
+    color: #333; /* Example text color */
+    text-align: center;
+  }
+  
+  /* Additional styling for footer content */
+  .footer-style {
+    padding: 1rem;
+  }
+  
+  .footer-bottom {
+    border-top: 1px solid #e0e0e0;
+    padding-top: 0.5rem;
+    font-size: 0.875rem;
+  }  
