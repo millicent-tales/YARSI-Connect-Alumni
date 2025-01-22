@@ -20,19 +20,19 @@ const storageFile = multer.diskStorage({
 
     // Sesuaikan dengan struktur folder yang ada
     if (req.originalUrl.startsWith("/api/v1/event")) {
-      folder = "src/uploads/public/events";
+      folder = "../uploads/public/events";
     } else if (req.originalUrl.startsWith("/api/v1/news")) {
-      folder = "src/uploads/public/news";
+      folder = "../uploads/public/news";
     } else if (req.originalUrl.startsWith("/api/v1/alumni-program")) {
-      folder = "src/uploads/public/alumni-programs";
+      folder = "../uploads/public/alumni-programs";
     } else if (req.originalUrl.startsWith("/api/v1/profile")) {
-      folder = "src/uploads/private/profiles";
+      folder = "../uploads/private/profiles";
     } else {
       return cb(new Error("Invalid category"), false);
     }
 
     // Gunakan path.join untuk membuat path absolut
-    const absolutePath = path.join(process.cwd(), folder);
+    const absolutePath = path.join(__dirname, folder);
 
     // Create directory if it doesn't exist
     const fs = require("fs");
