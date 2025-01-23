@@ -4,6 +4,7 @@ const prisma = new PrismaClient();
 const fs = require("fs");
 const twilioClient = require("../utils/twilioClient");
 const logger = require("../utils/logger");
+require("dotenv").config();
 
 exports.addEvent = async (req, res) => {
   try {
@@ -889,7 +890,7 @@ Pusat Perkembangan Karier dan Alumni Yarsi
 
       try {
         const response = await twilioClient.messages.create({
-          from: `whatsapp:+14155238886`,
+          from: process.env.TWILIO_WHATSAPP_NUMBER,
           to: `whatsapp:${formattedPhoneNumber}`,
           body: message,
         });
