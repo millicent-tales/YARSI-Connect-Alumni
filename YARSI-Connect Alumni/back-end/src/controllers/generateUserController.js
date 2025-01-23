@@ -6,6 +6,8 @@ const fs = require("fs");
 const twilioClient = require("../utils/twilioClient");
 const prisma = new PrismaClient();
 const util = require("util");
+require("dotenv").config();
+const logger = require("../utils/logger");
 
 // Convert fs.readdir and fs.stat to promise-based functions
 const readdir = util.promisify(fs.readdir);
@@ -310,7 +312,7 @@ async function processRow(row, tx) {
       const internationalMobileNumber =
         convertToInternationalFormat(mobileNumber);
       await twilioClient.messages.create({
-        from: "whatsapp:+14155238886",
+        from: process.env.TWILIO_WHATSAPP_NUMBER,
         to: `whatsapp:${internationalMobileNumber}`,
         body: `
         Halo ${fullName} 👋,
@@ -354,33 +356,36 @@ exports.generateAlumniUsers = async (req, res) => {
 
     // Validate and process data in transaction
     try {
-      await prisma.$transaction(async (tx) => {
-        // First phase: Validate all rows
-        for (let i = 0; i < data.length; i++) {
-          const row = data[i];
-          const rowErrors = await validateRow(row, tx);
+      await prisma.$transaction(
+        async (tx) => {
+          // First phase: Validate all rows
+          for (let i = 0; i < data.length; i++) {
+            const row = data[i];
+            const rowErrors = await validateRow(row, tx);
 
-          if (rowErrors.length > 0) {
-            validationErrors.push({
-              rowNumber: row["NO"],
-              npm: row["NPM"] || "unknown",
-              name: row["NAMA MAHASISWA"] || "unknown",
-              errors: rowErrors,
-            });
+            if (rowErrors.length > 0) {
+              validationErrors.push({
+                rowNumber: row["NO"],
+                npm: row["NPM"] || "unknown",
+                name: row["NAMA MAHASISWA"] || "unknown",
+                errors: rowErrors,
+              });
+            }
           }
-        }
 
-        // If there are any validation errors, abort the transaction
-        if (validationErrors.length > 0) {
-          throw new Error("Validation failed");
-        }
+          // If there are any validation errors, abort the transaction
+          if (validationErrors.length > 0) {
+            throw new Error("Validation failed");
+          }
 
-        // Second phase: Process all rows if validation passed
-        for (const row of data) {
-          const userData = await processRow(row, tx);
-          usersData.push(userData);
-        }
-      });
+          // Second phase: Process all rows if validation passed
+          for (const row of data) {
+            const userData = await processRow(row, tx);
+            usersData.push(userData);
+          }
+        },
+        { timeout: 50000 }
+      );
 
       // Generate output Excel file if processing succeeded
       if (usersData.length > 0) {
@@ -508,6 +513,13 @@ exports.downloadGeneratedExcel = async (req, res) => {
   try {
     const { filename } = req.params;
 
+    logger.info("Download request received", {
+      method: "downloadGeneratedExcel",
+      filename,
+      url: req.originalUrl,
+      userId: req.user?.id, // jika ada authentication
+    });
+
     // Path ke direktori file excel yang di-generate
     const filePath = path.join(
       __dirname,
@@ -521,10 +533,24 @@ exports.downloadGeneratedExcel = async (req, res) => {
 
     // Cek apakah file exists
     if (!fs.existsSync(filePath)) {
+      logger.error("File not found", {
+        method: "downloadGeneratedExcel",
+        filename,
+        path: filePath,
+        url: req.originalUrl,
+      });
+
       return res.status(404).json({
         message: "File tidak ditemukan",
       });
     }
+
+    logger.info("File found and ready for download", {
+      method: "downloadGeneratedExcel",
+      filename,
+      fileSize: fs.statSync(filePath).size,
+      url: req.originalUrl,
+    });
 
     // Set MIME type untuk file Excel (.xlsx)
     const mimeType =
@@ -543,6 +569,12 @@ exports.downloadGeneratedExcel = async (req, res) => {
     fileStream.pipe(res);
   } catch (error) {
     console.error("Error downloading file:", error);
+    logger.error("Error in download process", {
+      method: "downloadGeneratedExcel",
+      error: error.message,
+      stack: error.stack,
+      url: req.originalUrl,
+    });
     res.status(500).json({
       message: "Terjadi kesalahan saat mengunduh file",
       error: error.message,
