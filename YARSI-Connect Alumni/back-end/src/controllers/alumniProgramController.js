@@ -2,9 +2,17 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const twilioClient = require("../utils/twilioClient");
 const logger = require("../utils/logger");
+require("dotenv").config();
 
 exports.addAlumniProgram = async (req, res) => {
   try {
+    logger.info({
+      message: "Starting alumni program creation",
+      userId: req.user?.id,
+      method: req.method,
+      url: req.originalUrl,
+    });
+
     const { title, description, category } = req.validatedData;
 
     const existingAlumniProgram = await prisma.alumniProgram.findFirst({
@@ -12,13 +20,18 @@ exports.addAlumniProgram = async (req, res) => {
     });
 
     if (existingAlumniProgram) {
+      logger.warn({
+        message: "Duplicate alumni program title detected",
+        userId: req.user?.id,
+        title: title,
+      });
+
       return res.status(400).json({
         status: "fail",
         message: "Nama judul sudah ada, silahkan masukkan judul lain.",
       });
     }
 
-    // Get current user with role and profile information
     const currentUser = await prisma.user.findUnique({
       where: { id: req.user.id },
       include: {
@@ -39,6 +52,11 @@ exports.addAlumniProgram = async (req, res) => {
     });
 
     if (!currentUser) {
+      logger.error({
+        message: "User not found",
+        userId: req.user?.id,
+      });
+
       return res.status(404).json({
         status: "fail",
         message: "User tidak ditemukan.",
@@ -47,6 +65,12 @@ exports.addAlumniProgram = async (req, res) => {
     }
 
     if (currentUser.role.name !== "alumni") {
+      logger.warn({
+        message: "Non-alumni user attempted to create program",
+        userId: currentUser.id,
+        role: currentUser.role.name,
+      });
+
       return res.status(403).json({
         status: "fail",
         message: "Hanya alumni yang diizinkan menambahkan program alumni.",
@@ -54,13 +78,17 @@ exports.addAlumniProgram = async (req, res) => {
     }
 
     if (!currentUser.Profile) {
+      logger.error({
+        message: "Alumni profile not found",
+        userId: currentUser.id,
+      });
+
       return res.status(400).json({
         status: "fail",
         message: "Profile alumni tidak ditemukan.",
       });
     }
 
-    // Create new alumni program
     const newAlumniProgram = await prisma.alumniProgram.create({
       data: {
         title,
@@ -93,6 +121,14 @@ exports.addAlumniProgram = async (req, res) => {
       },
     });
 
+    logger.info({
+      message: "Alumni program created successfully",
+      programId: newAlumniProgram.id,
+      userId: currentUser.id,
+      title: title,
+      category: category,
+    });
+
     return res.status(201).json({
       status: "success",
       message: "Program alumni berhasil ditambahkan dan menunggu verifikasi.",
@@ -111,6 +147,17 @@ exports.addAlumniProgram = async (req, res) => {
       },
     });
   } catch (error) {
+    logger.error({
+      message: "Error in alumni program creation",
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+      requestData: {
+        title: req.validatedData?.title,
+        category: req.validatedData?.category,
+      },
+    });
+
     console.error("Error:", error);
     return res.status(500).json({
       status: "error",
@@ -440,6 +487,7 @@ exports.readVerifiedAlumniProgram = async (req, res) => {
 exports.verifyAlumniProgram = async (req, res) => {
   try {
     const { id } = req.params;
+    // const { action, rejectionReason } = req.body;
     const { action } = req.body;
     rejectionReason = "Request data anda belum memenuhi syarat";
 
@@ -683,16 +731,32 @@ exports.toggleIsActiveAlumniProgram = async (req, res) => {
 
 exports.sendAlumniProgramWhatsapp = async (req, res) => {
   try {
+    logger.info({
+      message: "Starting WhatsApp broadcast for Alumni Program",
+      method: req.method,
+      url: req.originalUrl,
+      userId: req.user?.id,
+    });
+
     const { id } = req.params;
 
     if (!id) {
+      logger.warn({
+        message: "Missing Alumni Program ID",
+        userId: req.user?.id,
+      });
+
       return res.status(400).json({
         status: "fail",
         message: "ID Program Alumni harus diisi",
       });
     }
 
-    // Ambil data program alumni
+    logger.debug({
+      message: "Fetching Alumni Program details",
+      programId: id,
+    });
+
     const alumniProgram = await prisma.alumniProgram.findUnique({
       where: { id },
       include: {
@@ -705,13 +769,24 @@ exports.sendAlumniProgramWhatsapp = async (req, res) => {
     });
 
     if (!alumniProgram) {
+      logger.warn({
+        message: "Alumni Program not found",
+        programId: id,
+        userId: req.user?.id,
+      });
+
       return res.status(404).json({
         status: "fail",
         message: "Program Alumni tidak ditemukan",
       });
     }
 
-    // Ambil data alumni dengan nomor telepon yang valid
+    logger.info({
+      message: "Fetching alumni contact data",
+      programId: id,
+      programTitle: alumniProgram.title,
+    });
+
     const sensitiveData = await prisma.sensitiveStudentData.findMany({
       where: {
         mobile_number: {
@@ -730,25 +805,38 @@ exports.sendAlumniProgramWhatsapp = async (req, res) => {
     });
 
     if (!sensitiveData || sensitiveData.length === 0) {
+      logger.warn({
+        message: "No valid alumni phone numbers found",
+        programId: id,
+      });
+
       return res.status(404).json({
         status: "fail",
         message: "Tidak ada data alumni dengan nomor telepon yang valid",
       });
     }
 
+    logger.info({
+      message: "Starting WhatsApp broadcast",
+      programId: id,
+      recipientCount: sensitiveData.length,
+      programTitle: alumniProgram.title,
+    });
+
     const shortDescription =
       alumniProgram.description.length > 500
         ? `${alumniProgram.description.slice(0, 500)}...`
         : alumniProgram.description;
 
-    // Array untuk menyimpan promise pengiriman pesan
     const messagePromises = sensitiveData.map(async (student) => {
-      // Format nomor telepon
       const formattedPhoneNumber = formatPhoneNumber(student.mobile_number);
+
       if (!formattedPhoneNumber) {
         logger.warn({
-          message: `Invalid phone number for alumni: ${student.profile.full_name}`,
-          phoneNumber: student.mobile_number,
+          message: "Invalid phone number detected",
+          studentName: student.profile.full_name,
+          rawPhoneNumber: student.mobile_number,
+          programId: id,
         });
         return null;
       }
@@ -772,17 +860,25 @@ Pusat Perkembangan Karier dan Alumni Yarsi
 `.trim();
 
       try {
+        logger.debug({
+          message: "Attempting to send WhatsApp message",
+          recipientName: student.profile.full_name,
+          programId: id,
+          phoneNumber: formattedPhoneNumber,
+        });
+
         const response = await twilioClient.messages.create({
-          from: `whatsapp:+14155238886`,
+          from: process.env.TWILIO_WHATSAPP_NUMBER,
           to: `whatsapp:${formattedPhoneNumber}`,
           body: message,
         });
-        console.log("test");
 
         logger.info({
-          message: `WhatsApp message sent for Alumni Program ID: ${id} to ${student.profile.full_name}`,
-          phoneNumber: formattedPhoneNumber,
+          message: "WhatsApp message sent successfully",
+          programId: id,
+          recipientName: student.profile.full_name,
           messageId: response.sid,
+          status: response.status,
         });
 
         return {
@@ -793,17 +889,27 @@ Pusat Perkembangan Karier dan Alumni Yarsi
         };
       } catch (error) {
         logger.error({
-          message: `Failed to send WhatsApp message to ${student.profile.full_name}`,
+          message: "Failed to send WhatsApp message",
           error: error.message,
+          stack: error.stack,
+          recipientName: student.profile.full_name,
           phoneNumber: formattedPhoneNumber,
+          programId: id,
         });
         return null;
       }
     });
 
-    // Tunggu semua pesan dikirim
     const results = await Promise.all(messagePromises);
     const successfulMessages = results.filter((result) => result !== null);
+
+    logger.info({
+      message: "WhatsApp broadcast completed",
+      programId: id,
+      totalAttempted: sensitiveData.length,
+      successfulCount: successfulMessages.length,
+      failedCount: sensitiveData.length - successfulMessages.length,
+    });
 
     return res.status(200).json({
       status: "success",
@@ -812,8 +918,11 @@ Pusat Perkembangan Karier dan Alumni Yarsi
     });
   } catch (error) {
     logger.error({
-      message: `Error sending WhatsApp messages: ${error.message}`,
-      error,
+      message: "Error in WhatsApp broadcast process",
+      error: error.message,
+      stack: error.stack,
+      programId: req.params?.id,
+      userId: req.user?.id,
     });
 
     return res.status(500).json({
@@ -834,5 +943,5 @@ function formatPhoneNumber(phoneNumber) {
     return phoneNumber;
   }
   // Jika format tidak dikenal, kembalikan null (atau tangani sesuai kebutuhan)
-  return null;
+  return phoneNumber;
 }
