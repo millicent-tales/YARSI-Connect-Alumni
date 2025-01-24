@@ -59,16 +59,32 @@ const PORT = process.env.PORT;
 // MIDDLEWARE SETUP
 // ===============================================
 
+const allowedOrigins = [
+  "http://milicent-tales.space",
+  "http://147.93.53.204:3000",
+  "http://localhost:3000"
+];
+
 // Basic middleware configuration
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 app.use(
   cors({
-    origin: "http://localhost:3000",
-    credentials: true,
+    origin: (origin, callback) => {
+      // If no origin (e.g., for non-browser clients), allow the request
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true); // Allow the request
+      } else {
+        callback(new Error("Not allowed by CORS")); // Reject the request
+      }
+    },
+    credentials: true, // Allow credentials (cookies)
   })
 );
+
 app.use(cookieParser());
+
 
 // ===============================================
 // STATIC FILE SERVING

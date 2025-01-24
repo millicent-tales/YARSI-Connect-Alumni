@@ -4,7 +4,7 @@ import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import { Box } from "@mui/material";
 import { getListFile } from "../api/Api";
 
-const BASE_URL = "http://localhost:2000";
+const BASE_URL = "http://milicent-tales.space";
 
 const columns = [
   {
